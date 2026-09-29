@@ -1,16 +1,15 @@
 import json
 import sys
 
-from graph_builder import build_radio_graph
-from conflict_graph import build_distance_two_conflict_graph
-from coloring import distance_two_coloring
-from scheduler import create_schedule_matrix, validate_schedule
+from .graph_builder import build_radio_graph
+from .conflict_graph import build_distance_two_conflict_graph
+from .coloring import distance_two_coloring
 
 
 def load_coordinates():
+    """Load node coordinates from the input JSON file."""
 
     if len(sys.argv) > 1:
-
         input_path = sys.argv[1]
 
         try:
@@ -29,7 +28,52 @@ def load_coordinates():
         return json.load(file)
 
 
+def create_schedule_matrix(coloring):
+    """Create a Slot × Node binary schedule matrix."""
+
+    nodes = sorted(coloring.keys())
+    total_slots = max(coloring.values()) + 1
+
+    matrix = []
+
+    for slot in range(total_slots):
+        row = []
+
+        for node in nodes:
+            if coloring[node] == slot:
+                row.append(1)
+            else:
+                row.append(0)
+
+        matrix.append(row)
+
+    return nodes, matrix
+
+
+def validate_schedule(conflict_graph, coloring):
+    """Check that no conflicting nodes use the same slot."""
+
+    violations = []
+
+    for node_a, node_b in conflict_graph.edges():
+
+        if coloring[node_a] == coloring[node_b]:
+            violations.append(
+                (
+                    node_a,
+                    node_b,
+                    coloring[node_a]
+                )
+            )
+
+    return violations
+
+
 def main():
+
+    # --------------------------------------------------
+    # Load input
+    # --------------------------------------------------
 
     coordinates = load_coordinates()
 
@@ -43,8 +87,15 @@ def main():
     print("TDMA RADIO NETWORK")
     print("=" * 60)
 
-    print(f"Total nodes : {radio_graph.number_of_nodes()}")
-    print(f"Total links : {radio_graph.number_of_edges()}")
+    print(
+        f"Total nodes : "
+        f"{radio_graph.number_of_nodes()}"
+    )
+
+    print(
+        f"Total links : "
+        f"{radio_graph.number_of_edges()}"
+    )
 
     # --------------------------------------------------
     # Build Distance-2 conflict graph
@@ -54,7 +105,7 @@ def main():
         radio_graph
     )
 
-    print("\n")
+    print()
     print("=" * 60)
     print("DISTANCE-2 CONFLICT GRAPH")
     print("=" * 60)
@@ -68,28 +119,40 @@ def main():
     # Color conflict graph
     # --------------------------------------------------
 
-    coloring = distance_two_coloring(conflict_graph)
+    coloring = distance_two_coloring(
+        conflict_graph
+    )
 
     total_slots = max(coloring.values()) + 1
 
-    print("\n")
+    # --------------------------------------------------
+    # Node → Slot assignments
+    # --------------------------------------------------
+
+    print()
     print("=" * 60)
     print("TDMA NODE -> SLOT ASSIGNMENTS")
     print("=" * 60)
 
     for node in sorted(coloring):
-        print(f"{node}: Slot {coloring[node]}")
+        print(
+            f"{node}: Slot {coloring[node]}"
+        )
 
-    print("\n")
-    print(f"Total slots used: {total_slots}")
+    print()
+    print(
+        f"Total slots used: {total_slots}"
+    )
 
     # --------------------------------------------------
     # Create schedule matrix
     # --------------------------------------------------
 
-    nodes, matrix = create_schedule_matrix(coloring)
+    nodes, matrix = create_schedule_matrix(
+        coloring
+    )
 
-    print("\n")
+    print()
     print("=" * 60)
     print("TDMA SCHEDULE MATRIX")
     print("=" * 60)
@@ -105,10 +168,16 @@ def main():
 
     for slot, row in enumerate(matrix):
 
-        print(str(slot).ljust(8), end="")
+        print(
+            str(slot).ljust(8),
+            end=""
+        )
 
         for value in row:
-            print(str(value).ljust(10), end="")
+            print(
+                str(value).ljust(10),
+                end=""
+            )
 
         print()
 
@@ -121,7 +190,7 @@ def main():
         coloring
     )
 
-    print("\n")
+    print()
     print("=" * 60)
     print("SCHEDULE VALIDATION")
     print("=" * 60)
@@ -134,6 +203,7 @@ def main():
     else:
 
         print("Validation: FAILED")
+
         print(
             f"Number of violations: "
             f"{len(violations)}"
